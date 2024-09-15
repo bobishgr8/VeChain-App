@@ -114,182 +114,191 @@
       </section>
     
       <script>
-        let watchId = null;
-        let lastPosition = null;
-        let lastTimestamp = null;
-        let totalDistance = 0;
-    
-        const distanceThreshold = 100; // Maximum allowed distance between two points (in meters)
-        const speedThreshold = 50; // Maximum allowed speed (in m/s)
-        const timeThreshold = 5000; // Minimum time between updates (in milliseconds)
-    
-        const carbonEmissionsPerKm = {
-          Walking: 0, // kg CO₂ per kilometer
-          Running: 0, // kg CO₂ per kilometer
-          Biking: 0, // kg CO₂ per kilometer
-          Bus: 0.089, // kg CO₂ per kilometer
-          Train: 0.041, // kg CO₂ per kilometer
-          Driving: 0.24, // kg CO₂ per kilometer (reference car emissions)
-          Stationary: 0
-        };
-    
-        const distanceByMode = {
-          Walking: 0,
-          Running: 0,
-          Biking: 0,
-          Bus: 0,
-          Train: 0,
-          Driving: 0,
-          Stationary: 0
-        };
-    
-        const startTripBtn = document.getElementById('startTripBtn');
-        const stopTripBtn = document.getElementById('stopTripBtn');
-        const status = document.getElementById('status');
-        const latestCoords = document.getElementById('latestCoords');
-        const modeOfTransport = document.getElementById('modeOfTransport');
-        const totalDistanceElem = document.getElementById('totalDistance');
-        const distanceBreakdown = document.getElementById('distanceBreakdown');
-        const carbonSavedElem = document.getElementById('carbonSaved');
-        const tripSummary = document.getElementById('tripSummary');
-    
-        function calculateSpeedAndTransport(currentPosition) {
-          const { latitude, longitude, accuracy } = currentPosition.coords;
-          const currentTimestamp = currentPosition.timestamp;
-    
-          let transportMode = 'Stationary';
-    
-          if (lastPosition && lastTimestamp) {
-            const distance = calculateDistance(
-              lastPosition.coords.latitude,
-              lastPosition.coords.longitude,
-              latitude,
-              longitude
-            );
-    
-            const timeElapsed = (currentTimestamp - lastTimestamp) / 1000; // in seconds
-            const speed = distance / timeElapsed; // meters per second
-    
-            // Only process if distance and speed are reasonable
-            if (distance < distanceThreshold && speed < speedThreshold && timeElapsed >= timeThreshold / 1000) {
-              if (speed > 0 && speed <= 1.25) {
-                transportMode = 'Walking';
-              } else if (speed > 1.25 && speed <= 3.0) {
-                transportMode = 'Running';
-              } else if (speed > 3.0 && speed <= 6.0) {
-                transportMode = 'Biking';
-              } else if (speed > 6.0 && speed <= 20.0) {
-                transportMode = 'Bus';
-              } else if (speed > 20.0 && speed <= 33.0) {
-                transportMode = 'Train';
-              } else if (speed > 33.0) {
-                transportMode = 'Driving';
-              }
-    
-              // Update the total distance for the mode of transport
-              distanceByMode[transportMode] += distance;
-              totalDistance += distance;
-            }
-          }
-    
-          // Update the latest position and timestamp
-          lastPosition = currentPosition;
-          lastTimestamp = currentTimestamp;
-    
-          // Update UI with latest coordinates
-          latestCoords.textContent = `Lat: ${latitude}, Long: ${longitude}`;
-          modeOfTransport.textContent = `Mode of transport: ${transportMode}`;
-        }
-    
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-          const R = 6371000; // Earth radius in meters
-          const toRadians = angle => (angle * Math.PI) / 180;
-    
-          const dLat = toRadians(lat2 - lat1);
-          const dLon = toRadians(lon2 - lon1);
-    
-          const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    
-          return R * c; // Distance in meters
-        }
-    
-        function calculateCarbonSavings() {
-          let carbonSaved = 0;
-          let totalCarbonForCar = 0;
-    
-          for (let mode in distanceByMode) {
-            const distanceInKm = distanceByMode[mode] / 1000; // Convert meters to kilometers
-            const emissionsForMode = carbonEmissionsPerKm[mode] * distanceInKm;
-            const carEmissions = carbonEmissionsPerKm['Driving'] * distanceInKm;
-    
-            totalCarbonForCar += carEmissions; // Calculate the emissions if the person used a car for the same trip
-            carbonSaved += carEmissions - emissionsForMode; // Emissions saved compared to driving
-          }
-    
-          return carbonSaved.toFixed(2); // Return the amount of CO₂ saved in kg
-        }
-    
-        function saveTripToLocalStorage(tripData) {
-          let trips = JSON.parse(localStorage.getItem('trips')) || [];
-          trips.push(tripData);
-          localStorage.setItem('trips', JSON.stringify(trips));
-        }
-    
-        startTripBtn.addEventListener('click', () => {
-          watchId = navigator.geolocation.watchPosition(calculateSpeedAndTransport, () => {}, {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
-          });
-          status.style.display = 'block';
-          startTripBtn.disabled = true;
-          stopTripBtn.disabled = false;
-          tripSummary.style.display = 'none';
-        });
-    
-        stopTripBtn.addEventListener('click', () => {
-          if (watchId) {
-            navigator.geolocation.clearWatch(watchId);
-            watchId = null;
-            status.style.display = 'none';
-            startTripBtn.disabled = false;
-            stopTripBtn.disabled = true;
-    
-            // Calculate total carbon saved
-            const carbonSaved = calculateCarbonSavings();
-    
-            // Display trip summary
-            tripSummary.style.display = 'block';
-            totalDistanceElem.textContent = `Total distance: ${totalDistance.toFixed(2)} meters`;
-            distanceBreakdown.innerHTML = '';
-            for (let mode in distanceByMode) {
-              if (distanceByMode[mode] > 0) {
-                const li = document.createElement('li');
-                li.textContent = `${mode}: ${distanceByMode[mode].toFixed(2)} meters`;
-                distanceBreakdown.appendChild(li);
-              }
-            }
-            carbonSavedElem.textContent = `Carbon saved: ${carbonSaved} kg CO₂`;
-    
-            // Save trip data to localStorage with the current date and time
-            const tripData = {
-              date: new Date().toLocaleString(), // Save the current date and time
-              total_distance: totalDistance.toFixed(2),
-              carbon_saved: carbonSaved,
-              distance_by_mode: { ...distanceByMode }
-            };
-            saveTripToLocalStorage(tripData);
-    
-            // Reset distances for next trip
-            totalDistance = 0;
-            for (let mode in distanceByMode) distanceByMode[mode] = 0;
-          }
-        });
+let watchId = null;
+let lastPosition = null;
+let lastTimestamp = null;
+let totalDistance = 0;
+
+const distanceThreshold = 100; // Maximum allowed distance between two points (in meters)
+const speedThreshold = 50; // Maximum allowed speed (in m/s)
+const timeThreshold = 5000; // Minimum time between updates (in milliseconds)
+
+const carbonEmissionsPerKm = {
+  Walking: 0,
+  Running: 0,
+  Biking: 0,
+  Bus: 0.089,
+  Train: 0.041,
+  Driving: 0.24,
+  Stationary: 0
+};
+
+const distanceByMode = {
+  Walking: 0,
+  Running: 0,
+  Biking: 0,
+  Bus: 0,
+  Train: 0,
+  Driving: 0,
+  Stationary: 0
+};
+
+const startTripBtn = document.getElementById('startTripBtn');
+const stopTripBtn = document.getElementById('stopTripBtn');
+const status = document.getElementById('status');
+const latestCoords = document.getElementById('latestCoords');
+const modeOfTransport = document.getElementById('modeOfTransport');
+const totalDistanceElem = document.getElementById('totalDistance');
+const distanceBreakdown = document.getElementById('distanceBreakdown');
+const carbonSavedElem = document.getElementById('carbonSaved');
+const tripSummary = document.getElementById('tripSummary');
+
+function calculateSpeedAndTransport(currentPosition) {
+  const { latitude, longitude, accuracy } = currentPosition.coords;
+  const currentTimestamp = currentPosition.timestamp;
+
+  let transportMode = 'Stationary';
+
+  if (lastPosition && lastTimestamp) {
+    const distance = calculateDistance(
+      lastPosition.coords.latitude,
+      lastPosition.coords.longitude,
+      latitude,
+      longitude
+    );
+
+    const timeElapsed = (currentTimestamp - lastTimestamp) / 1000; // in seconds
+    const speed = distance / timeElapsed; // meters per second
+
+    // Only process if distance and speed are reasonable
+    if (distance < distanceThreshold && speed < speedThreshold && timeElapsed >= timeThreshold / 1000) {
+      if (speed > 0 && speed <= 1.25) {
+        transportMode = 'Walking';
+      } else if (speed > 1.25 && speed <= 3.0) {
+        transportMode = 'Running';
+      } else if (speed > 3.0 && speed <= 6.0) {
+        transportMode = 'Biking';
+      } else if (speed > 6.0 && speed <= 20.0) {
+        transportMode = 'Bus';
+      } else if (speed > 20.0 && speed <= 33.0) {
+        transportMode = 'Train';
+      } else if (speed > 33.0) {
+        transportMode = 'Driving';
+      }
+
+      // Update the total distance for the mode of transport
+      distanceByMode[transportMode] += distance;
+      totalDistance += distance;
+    }
+  }
+
+  // Update the latest position and timestamp
+  lastPosition = currentPosition;
+  lastTimestamp = currentTimestamp;
+
+  // Update UI with latest coordinates
+  latestCoords.textContent = `Lat: ${latitude}, Long: ${longitude}`;
+  modeOfTransport.textContent = `Mode of transport: ${transportMode}`;
+}
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Earth radius in meters
+  const toRadians = angle => (angle * Math.PI) / 180;
+
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // Distance in meters
+}
+
+function calculateCarbonSavings() {
+  let carbonSaved = 0;
+  let totalCarbonForCar = 0;
+
+  for (let mode in distanceByMode) {
+    const distanceInKm = distanceByMode[mode] / 1000; // Convert meters to kilometers
+    const emissionsForMode = carbonEmissionsPerKm[mode] * distanceInKm;
+    const carEmissions = carbonEmissionsPerKm['Driving'] * distanceInKm;
+
+    totalCarbonForCar += carEmissions; // Calculate the emissions if the person used a car for the same trip
+    carbonSaved += carEmissions - emissionsForMode; // Emissions saved compared to driving
+  }
+
+  return carbonSaved.toFixed(2); // Return the amount of CO₂ saved in kg
+}
+
+function saveTripToLocalStorage(tripData) {
+  let trips = JSON.parse(localStorage.getItem('trips')) || [];
+  trips.push(tripData);
+  localStorage.setItem('trips', JSON.stringify(trips));
+}
+
+function handleError(error) {
+  console.log('Error occurred: ', error.message);
+  alert('Geolocation error: ' + error.message);
+}
+
+startTripBtn.addEventListener('click', () => {
+  watchId = navigator.geolocation.watchPosition(calculateSpeedAndTransport, handleError, {
+    enableHighAccuracy: true,
+    timeout: 5000,
+    maximumAge: 0
+  });
+  status.style.display = 'block';
+  startTripBtn.disabled = true;
+  stopTripBtn.disabled = false;
+  tripSummary.style.display = 'none';
+});
+
+stopTripBtn.addEventListener('click', () => {
+  if (watchId) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    status.style.display = 'none';
+    startTripBtn.disabled = false;
+    stopTripBtn.disabled = true;
+
+    // Calculate total carbon saved
+    const carbonSaved = calculateCarbonSavings();
+
+    // Display trip summary
+    tripSummary.style.display = 'block';
+    totalDistanceElem.textContent = `Total distance: ${totalDistance.toFixed(2)} meters`;
+    distanceBreakdown.innerHTML = '';
+    for (let mode in distanceByMode) {
+      if (distanceByMode[mode] > 0) {
+        const li = document.createElement('li');
+        li.textContent = `${mode}: ${distanceByMode[mode].toFixed(2)} meters`;
+        distanceBreakdown.appendChild(li);
+      }
+    }
+    carbonSavedElem.textContent = `Carbon saved: ${carbonSaved} kg CO₂`;
+
+    // Save trip data to localStorage with the current date and time
+    const tripData = {
+      date: new Date().toLocaleString(),
+      total_distance: totalDistance.toFixed(2),
+      carbon_saved: carbonSaved,
+      distance_by_mode: { ...distanceByMode }
+    };
+    saveTripToLocalStorage(tripData);
+
+    // Reset distances for next trip
+    totalDistance = 0;
+    for (let mode in distanceByMode) distanceByMode[mode] = 0;
+
+    lastPosition = null;
+    lastTimestamp = null; // reset for new trip
+  }
+});
+
     </script>
     
     

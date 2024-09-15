@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Enter Your Wallet Address</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+  <style>
+    .wallet-input {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .wallet-stored {
+      font-size: 1.2rem;
+      color: #23d160;
+    }
+    .error-message {
+      color: #ff3860;
+    }
+  </style>
+</head>
+<body>
+  <section class="hero is-fullheight is-success">
+    <div class="hero-body">
+      <div class="container has-text-centered">
+        <h1 class="title">B3tter Move - Enter Your Wallet</h1>
+        <h2 class="subtitle">Please enter your VeWorld wallet address to continue</h2>
+
+        <div class="box wallet-input">
+          <div class="field">
+            <label class="label">Wallet Address</label>
+            <div class="control">
+              <input id="walletAddressInput" class="input" type="text" placeholder="Enter your wallet address">
+            </div>
+            <p id="error" class="error-message" style="display:none;"></p>
+          </div>
+
+          <button id="submitWalletBtn" class="button is-info is-large">
+            <span>Submit Wallet</span>
+          </button>
+        </div>
+
+        <div id="walletInfo" class="notification is-primary wallet-stored" style="display:none;">
+          Wallet Address Saved: <span id="walletAddressDisplay"></span>
+        </div>
+
+        <a id="continueBtn" href="index.html" class="button is-success is-large" style="display:none;">
+          <span>Continue to App</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const submitWalletBtn = document.getElementById('submitWalletBtn');
+    const walletAddressInput = document.getElementById('walletAddressInput');
+    const walletInfo = document.getElementById('walletInfo');
+    const walletAddressDisplay = document.getElementById('walletAddressDisplay');
+    const continueBtn = document.getElementById('continueBtn');
+    const errorMessage = document.getElementById('error');
+
+    // Store the wallet address in localStorage
+    submitWalletBtn.addEventListener('click', () => {
+      const walletAddress = walletAddressInput.value.trim();
+
+      // Basic validation to check if the input is not empty
+      if (walletAddress === '') {
+        errorMessage.style.display = 'block';
+        errorMessage.textContent = 'Please enter a valid wallet address.';
+      } else {
+        // Store the wallet address in localStorage
+        localStorage.setItem('walletAddress', walletAddress);
+
+        // Show the wallet information and continue button
+        walletInfo.style.display = 'block';
+        walletAddressDisplay.textContent = walletAddress;
+        continueBtn.style.display = 'inline-block';
+
+        // Hide any error messages
+        errorMessage.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -27,74 +27,32 @@
       font-weight: bold;
       color: #3273dc;
     }
+    .wallet-display {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #23d160;
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
-  <section class="hero is-success is-bold">
-    <!-- Hero head: will stick at the top -->
-    <div class="hero-head">
-      <header class="navbar">
-        <div class="container">
-          <div class="navbar-brand">
-            <a class="navbar-item">
-              <span><a href="/"><img src="graphics/bannerlogo.png" alt="logo" style="max-height: 60px;"></a></span>
-            </a>
-            <span class="navbar-burger burger" onclick="document.querySelector('.navbar-menu').classList.toggle('is-active');">
-              <span></span>
-              <span></span>
-              <span></span>
-            </span>
-          </div>
-          <div id="navbarMenuHeroC" class="navbar-menu">
-            <div class="navbar-end">
-              <a class="navbar-item" href="/">
-                Home
-              </a>
-              <a class="navbar-item is-active" href="analytics.html">
-                My trips
-              </a>
-              <a class="navbar-item" href="nfc_scan.html">
-                NFC
-              </a>
-              <span class="navbar-item">
-                <a class="button is-info is-inverted" href="https://github.com/bobishgr8">
-                  <span class="icon">
-                    <i class="fab fa-github"></i>
-                  </span>
-                  <span>Github</span>
-                </a>
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
-    </div>
-  
-    <!-- Hero content: will be in the middle -->
-    <div class="hero-body">
-      <div class="container has-text-centered" id="main-content">
-        <h1 class="title">
-          B3tter Move!
-        </h1>
-        <h2 class="subtitle">
-          Your trip analytics
-        </h2>
-      </div>
-    </div>
-  </section>
   <section class="section">
     <div class="container">
       <h1 class="title">Trip Analytics</h1>
 
+      <!-- Wallet Address Section -->
+      <div id="walletDisplay" class="wallet-display" style="display:none;">
+        Wallet Address: <span id="walletAddress"></span>
+      </div>
+
+      <!-- Trip and Token Information -->
       <div class="box fade-in">
-        <h2 class="subtitle">
-          <span class="icon"><i class="fas fa-list-alt"></i></span>Your Past Trips
-        </h2>
+        <h2 class="subtitle"><span class="icon"><i class="fas fa-list-alt"></i></span>Your Past Trips</h2>
         <ul id="tripList"></ul>
         <p class="tokens-earned" id="totalTokens">Total Better Tokens Earned: 0</p>
       </div>
 
-      <a href="/" class="button is-primary">
+      <a href="index.html" class="button is-primary">
         <span class="icon"><i class="fas fa-arrow-left"></i></span>
         <span>Back to Trip Tracker</span>
       </a>
@@ -102,6 +60,19 @@
   </section>
 
   <script>
+    function loadWalletAddress() {
+      const walletAddress = localStorage.getItem('walletAddress');
+      const walletDisplay = document.getElementById('walletDisplay');
+      const walletAddressElem = document.getElementById('walletAddress');
+
+      if (walletAddress) {
+        walletDisplay.style.display = 'block';
+        walletAddressElem.textContent = walletAddress;
+      } else {
+        walletDisplay.style.display = 'none';
+      }
+    }
+
     function loadTripsFromLocalStorage() {
       let trips = JSON.parse(localStorage.getItem('trips')) || [];
       const tripList = document.getElementById('tripList');
@@ -135,28 +106,10 @@
       }
     }
 
-    window.onload = loadTripsFromLocalStorage;
+    window.onload = function() {
+      loadWalletAddress(); // Load wallet address on page load
+      loadTripsFromLocalStorage();
+    };
   </script>
-  <footer class="footer">
-    <div class="columns is-1-mobile">
-      <div class="column">
-        <div class="field is-grouped is-grouped-multiline">
-          <div class="control">
-            <div class="tags has-addons">
-              <span class="tag is-dark">build</span>
-              <span class="tag is-success">prototype</span>
-            </div>
-          </div>
-          <div class="control">
-            <div class="tags has-addons">
-              <span class="tag is-dark">VeChain</span>
-              <span class="tag is-info">Web3</span>
-            </div>
-          </div>
-        </div>
-        <p>This website is built for VeChain x EasyA x BCG hackathon. All rights reserved.</p>
-      </div>
-    </div>
-  </footer>
 </body>
 </html>
